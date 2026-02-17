@@ -19,45 +19,50 @@ os.system("") # ANSI escape setup
 if sys.version_info[1] >= 7: # only works on python 3.7+
 	sys.stdout.reconfigure(encoding='utf-8') # note: please stop using git bash
 
-# CONFIG.TXT CREATION
-if getattr(sys, 'frozen', False): # place config.txt in same directory as script (bundled or not)
-	app_path = os.path.dirname(sys.executable)
-elif __file__:
-	app_path = os.path.dirname(__file__)
-config_path = os.path.join(app_path, "config.txt")
+def init(custom_config_path=None):
+	# CONFIG.TXT CREATION
+	if custom_config_path is not None:
+		app_path = custom_config_path
+	elif getattr(sys, 'frozen', False): # place config.txt in same directory as script (bundled or not)
+		app_path = os.path.dirname(sys.executable)
+	elif __file__:
+		app_path = os.path.dirname(__file__)
+	global config_path
+	config_path = os.path.join(app_path, "config.txt")
 
-try:
-	config_file = open(config_path, "r")
-	CONFIG_DATA = json.load(config_file)
-	config_file.close()
-except (IOError, ValueError):
-	print("Generating new config file.")
-	CONFIG_DATA = {"api_key": "", "acc_loc": "", "gtoken": "", "bullettoken": "", "session_token": "", "f_gen": "https://api.imink.app/f"}
-	config_file = open(config_path, "w")
-	config_file.seek(0)
-	config_file.write(json.dumps(CONFIG_DATA, indent=4, sort_keys=False, separators=(',', ': ')))
-	config_file.close()
-	config_file = open(config_path, "r")
-	CONFIG_DATA = json.load(config_file)
-	config_file.close()
+	global config_file, CONFIG_DATA
+	try:
+		config_file = open(config_path, "r")
+		CONFIG_DATA = json.load(config_file)
+		config_file.close()
+	except (IOError, ValueError):
+		print("Generating new config file.")
+		CONFIG_DATA = {"api_key": "", "acc_loc": "", "gtoken": "", "bullettoken": "", "session_token": "", "f_gen": "https://api.imink.app/f"}
+		config_file = open(config_path, "w")
+		config_file.seek(0)
+		config_file.write(json.dumps(CONFIG_DATA, indent=4, sort_keys=False, separators=(',', ': ')))
+		config_file.close()
+		config_file = open(config_path, "r")
+		CONFIG_DATA = json.load(config_file)
+		config_file.close()
 
-# SET GLOBALS
-API_KEY       = CONFIG_DATA["api_key"]       # for stat.ink
-USER_LANG     = CONFIG_DATA["acc_loc"][:5]   # user input
-USER_COUNTRY  = CONFIG_DATA["acc_loc"][-2:]  # nintendo account info
-GTOKEN        = CONFIG_DATA["gtoken"]        # for accessing splatnet - base64 json web token
-BULLETTOKEN   = CONFIG_DATA["bullettoken"]   # for accessing splatnet - base64
-SESSION_TOKEN = CONFIG_DATA["session_token"] # for nintendo login
-F_GEN_URL     = CONFIG_DATA["f_gen"]         # endpoint for generating f (imink API by default)
+	global API_KEY, USER_LANG, USER_COUNTRY, GTOKEN, BULLETTOKEN, SESSION_TOKEN, F_GEN_URL, thread_pool, DEFAULT_USER_AGENT, APP_USER_AGENT
+	# SET GLOBALS
+	API_KEY       = CONFIG_DATA["api_key"]       # for stat.ink
+	USER_LANG     = CONFIG_DATA["acc_loc"][:5]   # user input
+	USER_COUNTRY  = CONFIG_DATA["acc_loc"][-2:]  # nintendo account info
+	GTOKEN        = CONFIG_DATA["gtoken"]        # for accessing splatnet - base64 json web token
+	BULLETTOKEN   = CONFIG_DATA["bullettoken"]   # for accessing splatnet - base64
+	SESSION_TOKEN = CONFIG_DATA["session_token"] # for nintendo login
+	F_GEN_URL     = CONFIG_DATA["f_gen"]         # endpoint for generating f (imink API by default)
 
-thread_pool = ThreadPoolExecutor(max_workers=2)
+	thread_pool = ThreadPoolExecutor(max_workers=2)
 
-# SET HTTP HEADERS
-DEFAULT_USER_AGENT = 'Mozilla/5.0 (Linux; Android 14; Pixel 7a) ' \
-						'AppleWebKit/537.36 (KHTML, like Gecko) ' \
-						'Chrome/120.0.6099.230 Mobile Safari/537.36'
-APP_USER_AGENT = str(CONFIG_DATA.get("app_user_agent", DEFAULT_USER_AGENT))
-
+	# SET HTTP HEADERS
+	DEFAULT_USER_AGENT = 'Mozilla/5.0 (Linux; Android 14; Pixel 7a) ' \
+							'AppleWebKit/537.36 (KHTML, like Gecko) ' \
+							'Chrome/120.0.6099.230 Mobile Safari/537.36'
+	APP_USER_AGENT = str(CONFIG_DATA.get("app_user_agent", DEFAULT_USER_AGENT))
 
 def write_config(tokens):
 	'''Writes config file and updates the global variables.'''
@@ -1807,7 +1812,7 @@ def parse_arguments():
 		help="dry run for testing (won't post to stat.ink)")
 	parser.add_argument("--getseed", required=False, action="store_true",
 		help="export JSON for gear & Shell-Out Machine seed checker")
-	parser.add_argument("--data-path", dest="data_path", nargs=1, required=False,
+	parser.add_argument("--data-path", dest="data_path", required=False,
 		help="force data path: `--data-path /data`")
 	parser.add_argument("--norefresh", dest="RC", required=False, nargs="?", action="store", help=argparse.SUPPRESS, const=0)
 	parser.add_argument("--skipprefetch", required=False, action="store_true", help=argparse.SUPPRESS)
@@ -1839,6 +1844,8 @@ def main():
 	skipprefetch = parser_result.skipprefetch # skip prefetch checks to ensure token validity
 
 	rc_value = parser_result.RC # stop application instead of trying to refresh tokens
+
+	init(data_path)
 
 	# setup
 	#######
