@@ -1807,6 +1807,8 @@ def parse_arguments():
 		help="dry run for testing (won't post to stat.ink)")
 	parser.add_argument("--getseed", required=False, action="store_true",
 		help="export JSON for gear & Shell-Out Machine seed checker")
+	parser.add_argument("--data-path", dest="data_path", nargs=1, required=False,
+		help="force data path: `--data-path /data`")
 	parser.add_argument("--norefresh", dest="RC", required=False, nargs="?", action="store", help=argparse.SUPPRESS, const=0)
 	parser.add_argument("--skipprefetch", required=False, action="store_true", help=argparse.SUPPRESS)
 	return parser.parse_args()
@@ -1828,6 +1830,7 @@ def main():
 	only_salmon = parser_result.osr # salmon run ONLY
 	blackout    = parser_result.blackout
 	getseed     = parser_result.getseed
+	data_path   = parser_result.data_path     # intended for docker installation
 
 	# testing/dev stuff
 	test_run     = parser_result.t            # send to stat.ink as dry run
